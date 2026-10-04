@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#eeeae2">
+  <title>Video Notes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="masthead"><div class="wordmark"><span class="brand-mark" aria-hidden="true">▶</span> Video Notes</div><button id="settingsButton" class="settings-button" type="button">Settings</button></header>
+    <div class="layout">
+      <section class="input-panel" aria-labelledby="inputTitle">
+        <p class="kicker">A NOTEBOOK FOR YOUTUBE</p>
+        <h1 id="inputTitle">Know what you watched.</h1>
+        <p class="intro">A short overview, key moments in order, and the sources mentioned along the way.</p>
+        <div id="serverStatus" class="status" role="status">Connecting…</div>
+        <form id="analysisForm">
+          <label for="videoUrl">Video link</label>
+          <input id="videoUrl" name="videoUrl" type="url" placeholder="youtube.com/watch?v=…" required>
+          <button id="sampleButton" class="text-button" type="button">Use an example</button>
+          <div id="videoPreview" class="video-preview" hidden><iframe id="videoFrame" title="YouTube video preview" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+          <button id="analyzeButton" class="primary" type="submit">Make notes <span aria-hidden="true">→</span></button>
+          <p class="fine-print">Add a transcript below for more precise quotations and timestamps.</p>
+          <details class="more-options"><summary>Add a transcript <span>optional</span></summary>
+            <p class="hint">A transcript gives more reliable wording and timestamps. Import it from YouTube or add a file.</p>
+            <div class="import-row"><button id="importMain" class="secondary" type="button">Import from open YouTube tab</button><button id="loadMain" class="secondary" type="button">Use latest import</button></div>
+            <div class="field-row"><label for="transcript">Transcript</label><label class="upload" for="fileInput">Upload file</label></div>
+            <input id="fileInput" type="file" accept=".docx,.srt,.vtt,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+            <textarea id="transcript" name="transcript" rows="8" placeholder="[00:00] What the speaker says…"></textarea>
+          </details>
+          <details class="more-options"><summary>Compare a second video <span>optional</span></summary>
+            <p class="hint">Add its transcript to check what the first video says about it.</p>
+            <div class="import-row"><button id="importComparison" class="secondary" type="button">Import from open YouTube tab</button><button id="loadComparison" class="secondary" type="button">Use latest import</button></div>
+            <label for="comparisonVideoUrl">Second video link</label><input id="comparisonVideoUrl" type="url" placeholder="Optional YouTube link">
+            <div class="field-row"><label for="comparisonTranscript">Second transcript</label><label class="upload" for="comparisonFileInput">Upload file</label></div>
+            <input id="comparisonFileInput" type="file" accept=".docx,.srt,.vtt,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+            <textarea id="comparisonTranscript" rows="6" placeholder="[00:00] What the other speaker says…"></textarea>
+          </details>
+          <details class="more-options"><summary>Source preferences</summary><label for="priority">Check these sources first</label>
+            <select id="priority"><option value="Original sources and reputable references">Original sources and reputable references</option><option value="Academic research and primary documents">Academic research and primary documents</option><option value="Scripture, confessions, primary theologians, then scholarship">Scripture, confessions, and theology</option></select>
+          </details>
+        </form>
+      </section>
+      <section class="result-panel" aria-labelledby="resultsTitle">
+        <div class="result-top"><div><p class="kicker">VIDEO RECORD</p><h2 id="resultsTitle">Notes</h2></div><span id="resultMeta"></span></div>
+        <div id="emptyState" class="empty-state"><p class="empty-number">—</p><h3>No video yet</h3><p>Paste a link to see what the video covers. Your notes will appear here.</p><div class="empty-rule"></div><span>OVERVIEW&nbsp;&nbsp; / &nbsp;&nbsp;KEY MOMENTS&nbsp;&nbsp; / &nbsp;&nbsp;SOURCES</span></div>
+        <div id="result" hidden>
+          <p id="provenance" class="provenance"></p>
+          <div class="result-toolbar"><span>VIDEO GUIDE</span><button id="exportButton" class="secondary" type="button">Copy notes</button></div>
+          <h3 class="section-title">Overview</h3><p id="summary" class="summary"></p>
+          <p id="mainIdea" class="main-idea"></p>
+          <h3 class="section-title">In brief</h3><ul id="takeaways" class="takeaways"></ul>
+          <h3 class="section-title">The video, in order</h3><div id="claims" class="moments"></div>
+          <h3 class="section-title">Sources mentioned</h3><div id="sourceAudit"></div>
+          <div id="comparisonSection" hidden><h3 class="section-title">Second video check</h3><div id="comparisonChecks"></div></div>
+          <details class="research-limits"><summary>What still needs checking</summary><p id="limits"></p></details>
+        </div>
+      </section>
+    </div>
+  </main>
+  <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
+    <form id="settingsForm">
+      <div class="dialog-head"><div><p class="kicker">LOCAL SETTINGS</p><h2 id="settingsTitle">Connect your API keys</h2></div><button id="closeSettings" class="close-button" type="button" aria-label="Close settings">×</button></div>
+      <p class="dialog-intro">Keys are saved on this computer. OpenAI makes the notes and checks sources. Gemini can read a public video when you don't add a transcript.</p>
+      <label for="openaiKey">OpenAI API key</label><input id="openaiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+      <button id="saveOpenai" class="secondary save-key" type="button">Save OpenAI key</button><span id="openaiKeyStatus" class="key-status"></span>
+      <p class="hint"><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Get an OpenAI API key</a></p>
+      <div class="dialog-divider"></div>
+      <label for="geminiKey">Gemini API key <span class="optional">for link-only video notes</span></label><input id="geminiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
+      <button id="saveGemini" class="secondary save-key" type="button">Save Gemini key</button><span id="geminiKeyStatus" class="key-status"></span>
+      <p class="hint"><a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Get a Gemini API key</a></p>
+    </form>
+  </dialog>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

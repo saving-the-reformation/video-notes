@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Video Notes",
+  "version": "0.1.0",
+  "description": "Understand a YouTube video's main points, moments, and sources.",
+  "permissions": ["sidePanel", "activeTab", "tabs"],
+  "host_permissions": ["http://127.0.0.1:4317/*", "https://www.youtube.com/*", "https://youtube.com/*"],
+  "content_scripts": [
+    { "matches": ["https://www.youtube.com/watch*", "https://youtube.com/watch*"], "js": ["youtube-transcript.js"], "run_at": "document_idle" }
+  ],
+  "background": { "service_worker": "worker.js" },
+  "action": { "default_title": "Open Video Notes" },
+  "side_panel": { "default_path": "index.html" }
+}
