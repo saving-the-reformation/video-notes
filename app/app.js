@@ -4,6 +4,13 @@ const $ = id => document.getElementById(id);
 const sampleUrl = 'https://www.youtube.com/watch?v=qSuCPooR3E4&t=288s';
 let currentResult = null;
 if (!extension) { $('importMain').hidden = true; $('importComparison').hidden = true; }
+function videoIdFromUrl(value) {
+  try {
+    const url = new URL(value);
+    const id = url.hostname === 'youtu.be' ? url.pathname.slice(1) : ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname) ? url.searchParams.get('v') : null;
+    return /^[A-Za-z0-9_-]{11}$/.test(id || '') ? id : null;
+  } catch { return null; }
+}
 
 function previewVideo() {
   let id = null, start = 0;
@@ -22,6 +29,14 @@ function previewVideo() {
 $('videoUrl').addEventListener('change', previewVideo);
 
 function setStatus(message, error = false) { $('serverStatus').textContent = message; $('serverStatus').classList.toggle('error', error); }
+function showTranscriptHelp() {
+  $('transcriptOptions').open = true;
+  $('transcriptHelp').hidden = false;
+  try {
+    const url = new URL($('videoUrl').value);
+    $('transcriptVideoLink').href = ['youtube.com', 'www.youtube.com', 'm.youtube.com', 'youtu.be'].includes(url.hostname) ? url.href : 'https://www.youtube.com/';
+  } catch { $('transcriptVideoLink').href = 'https://www.youtube.com/'; }
+}
 async function checkServer() {
   if (location.protocol === 'file:') { setStatus('Start the server, then open http://127.0.0.1:4317 in your browser.', true); return; }
   try {
@@ -68,16 +83,19 @@ function fillCapture(data, slot) {
   const coverage = data.duration && timestampSeconds(data.lastTime) < data.duration * .85;
   setStatus(`Imported ${data.count} timestamped lines through ${data.lastTime}.${coverage ? ' Check that the transcript loaded to the end.' : ''}`, coverage);
 }
-async function importFromYouTube(slot) {
+async function importFromYouTube(slot, { silent = false, expectedVideoId = null } = {}) {
   try {
     const [active] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     if (!active?.id) throw new Error('Open a YouTube video in the active tab.');
-    const data = await chrome.tabs.sendMessage(active.id, { type: 'VIDEO_ARGUMENT_LAB_READ_TRANSCRIPT' });
+    const data = await chrome.tabs.sendMessage(active.id, { type: 'VIDEO_ARGUMENT_LAB_READ_TRANSCRIPT', autoOpen: true });
     if (data?.error) throw new Error(data.error);
-    if (!data?.transcript) throw new Error('Open Show transcript on YouTube, then try again.');
+    if (!data?.transcript) throw new Error('YouTube did not provide a transcript for this video.');
+    if (expectedVideoId && videoIdFromUrl(data.videoUrl) !== expectedVideoId) return false;
     fillCapture(data, slot);
+    $('transcriptHelp').hidden = true;
     try { await fetch(`${apiBase}/api/capture`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...data, slot }) }); } catch { /* Side panel still has text. */ }
-  } catch (error) { setStatus(error.message || 'Could not import the transcript.', true); }
+    return true;
+  } catch (error) { if (!silent) setStatus(error.message || 'Could not import the transcript.', true); return false; }
 }
 async function loadCaptured(slot) {
   try {
@@ -100,7 +118,7 @@ function timeLink(videoId, seconds) {
 }
 function addSources(parent, sources) {
   const box = node('div', 'sources');
-  if (!sources?.length) box.append(node('span', 'no-source', 'No verified link available'));
+  if (!sources?.length) box.append(node('span', 'no-source', 'No source link found'));
   for (const source of sources || []) {
     const link = node('a', 'source', source.title || 'Open source');
     link.href = source.url; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.title = source.relevance;
@@ -108,11 +126,17 @@ function addSources(parent, sources) {
   }
   parent.append(box);
 }
+function addCaption(parent, caption) {
+  if (!caption?.text) return;
+  const p = node('p', 'caption-near');
+  p.append(node('strong', '', `Captions near ${timeLabel(caption.seconds)}: `), document.createTextNode(caption.text));
+  parent.append(p);
+}
 function render(result) {
   currentResult = result;
   $('emptyState').hidden = true; $('result').hidden = false;
   const provisional = result.transcriptMode === 'gemini-video-notes';
-  $('resultMeta').textContent = `${result.claims.length} moments · ${result.source_audit.length} sources`;
+  $('resultMeta').textContent = `${result.claims.length} moments · ${result.source_audit.length} source checks`;
   $('provenance').textContent = provisional ? 'Made from Gemini video notes. Points are paraphrased and timestamps are approximate; check the video before quoting.' : 'Made from a timestamped transcript. Short quotes are matched to the supplied text.';
   $('summary').textContent = result.summary; $('mainIdea').textContent = result.main_idea;
   $('takeaways').replaceChildren(...result.takeaways.map(value => node('li', '', value)));
@@ -121,15 +145,17 @@ function render(result) {
     const card = node('article', 'moment'), head = node('div', 'moment-head');
     head.append(timeLink(result.videoId, item.seconds), node('h4', '', item.point)); card.append(head, node('p', '', item.explanation));
     if (item.excerpt_verified) card.append(node('p', 'excerpt', `“${item.transcript_excerpt}”`));
+    else addCaption(card, item.caption_near);
     addSources(card, item.sources); moments.append(card);
   }
   const audit = $('sourceAudit'); audit.replaceChildren();
-  if (!result.source_audit.length) audit.append(node('p', 'no-source', 'No named sources found in this video.'));
+  if (!result.source_audit.length) audit.append(node('p', 'no-source', 'No source checks were returned for this video.'));
   for (const item of result.source_audit) {
     const card = node('article', 'audit'), head = node('div', 'audit-head');
     head.append(timeLink(result.videoId, item.seconds), node('h4', '', item.source_name)); card.append(head);
-    card.append(node('p', 'meta', `${item.verification} · ${item.confidence}`));
-    if (item.excerpt_verified) card.append(node('p', 'excerpt', `“${item.speaker_excerpt}”`));
+    card.append(node('p', 'meta', `${item.excerpt_verified ? 'Caption matched' : 'No direct caption match'} · ${item.verification} · ${item.confidence}`));
+    if (item.excerpt_verified) card.append(node('p', 'excerpt', `Caption: “${item.speaker_excerpt}”`));
+    else addCaption(card, item.caption_near);
     card.append(node('p', '', item.speaker_use), node('p', '', item.finding)); addSources(card, item.sources); audit.append(card);
   }
   $('comparisonSection').hidden = !result.comparison_checks.length;
@@ -148,11 +174,13 @@ function markdown(result) {
   for (const item of result.claims) {
     lines.push('', `### [${timeLabel(item.seconds)}](${url}&t=${item.seconds}s) ${item.point}`, item.explanation);
     if (item.excerpt_verified) lines.push(`> “${item.transcript_excerpt}”`);
+    else if (item.caption_near?.text) lines.push(`> Captions near ${timeLabel(item.caption_near.seconds)}: ${item.caption_near.text}`);
     for (const source of item.sources) lines.push(`- [${source.title}](${source.url}) — ${source.relevance}`);
   }
-  lines.push('', '## Sources mentioned');
+  lines.push('', '## Sources and checks');
   for (const item of result.source_audit) {
-    lines.push('', `### [${timeLabel(item.seconds)}](${url}&t=${item.seconds}s) ${item.source_name}`, `${item.speaker_use} ${item.finding}`, `Verification: ${item.verification}`);
+    lines.push('', `### [${timeLabel(item.seconds)}](${url}&t=${item.seconds}s) ${item.source_name}`, `${item.speaker_use} ${item.finding}`, `Related caption: ${item.excerpt_verified ? `“${item.speaker_excerpt}”` : 'No direct match'}`, `Source check: ${item.verification}`);
+    if (!item.excerpt_verified && item.caption_near?.text) lines.push(`> Captions near ${timeLabel(item.caption_near.seconds)}: ${item.caption_near.text}`);
     for (const source of item.sources) lines.push(`- [${source.title}](${source.url}) — ${source.relevance}`);
   }
   if (result.comparison_checks.length) lines.push('', '## Second video check', ...result.comparison_checks.map(x => `- [${timeLabel(x.main_seconds)}](${url}&t=${x.main_seconds}s) ${x.claim_about_other}: ${x.finding}`));
@@ -180,13 +208,20 @@ $('analysisForm').addEventListener('submit', async event => {
   event.preventDefault();
   if (location.protocol === 'file:') { setStatus('Open http://127.0.0.1:4317 after starting the server to make notes.', true); return; }
   const button = $('analyzeButton'); button.disabled = true; button.firstChild.textContent = 'Exploring video… ';
-  setStatus('Watching the video and checking sources. This may take a few minutes.');
+  $('transcriptHelp').hidden = true;
+  setStatus('Reading the video and checking sources. This may take a few minutes.');
+  const started = Date.now();
+  const progress = setInterval(() => setStatus(`Still checking the video and sources · ${Math.floor((Date.now() - started) / 1000)} seconds elapsed.`), 15000);
   try {
+    if (extension && !$('transcript').value.trim()) {
+      const id = videoIdFromUrl($('videoUrl').value);
+      if (id) await importFromYouTube('main', { silent: true, expectedVideoId: id });
+    }
     const response = await fetch(`${apiBase}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ videoUrl: $('videoUrl').value, transcript: $('transcript').value, comparisonVideoUrl: $('comparisonVideoUrl').value, comparisonTranscript: $('comparisonTranscript').value, priority: $('priority').value }) });
-    const data = await response.json(); if (!response.ok) throw new Error(data.error || `Request failed (${response.status})`);
+    const data = await response.json(); if (!response.ok) { const error = new Error(data.error || `Request failed (${response.status})`); error.code = data.code; throw error; }
     render(data); setStatus('Notes are ready. Open any timestamp or source to check it.');
-  } catch (error) { setStatus(error.message || 'Could not make notes.', true); }
-  finally { button.disabled = false; button.firstChild.textContent = 'Make notes '; }
+  } catch (error) { if (error.code === 'TRANSCRIPT_NEEDED') showTranscriptHelp(); setStatus(error.message || 'Could not make notes.', true); }
+  finally { clearInterval(progress); button.disabled = false; button.firstChild.textContent = 'Make notes '; }
 });
 $('exportButton').addEventListener('click', async () => {
   if (!currentResult) return;

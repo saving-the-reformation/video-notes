@@ -14,18 +14,23 @@
       <section class="input-panel" aria-labelledby="inputTitle">
         <p class="kicker">A NOTEBOOK FOR YOUTUBE</p>
         <h1 id="inputTitle">Know what you watched.</h1>
-        <p class="intro">A short overview, key moments in order, and the sources mentioned along the way.</p>
+        <p class="intro">A short overview, key moments in order, and useful sources to check.</p>
         <div id="serverStatus" class="status" role="status">Connecting…</div>
+        <div id="transcriptHelp" class="transcript-help" hidden>
+          <strong>Use the video’s transcript</strong>
+          <p>Open the video in YouTube, then select “Show transcript.” In the Chrome side panel, choose “Import from YouTube.” You can also paste the captions or upload a file below.</p>
+          <a id="transcriptVideoLink" href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer">Open video on YouTube ↗</a>
+        </div>
         <form id="analysisForm">
           <label for="videoUrl">Video link</label>
           <input id="videoUrl" name="videoUrl" type="url" placeholder="youtube.com/watch?v=…" required>
           <button id="sampleButton" class="text-button" type="button">Use an example</button>
           <div id="videoPreview" class="video-preview" hidden><iframe id="videoFrame" title="YouTube video preview" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
           <button id="analyzeButton" class="primary" type="submit">Make notes <span aria-hidden="true">→</span></button>
-          <p class="fine-print">Add a transcript below for more precise quotations and timestamps.</p>
-          <details class="more-options"><summary>Add a transcript <span>optional</span></summary>
-            <p class="hint">A transcript gives more reliable wording and timestamps. Import it from YouTube or add a file.</p>
-            <div class="import-row"><button id="importMain" class="secondary" type="button">Import from open YouTube tab</button><button id="loadMain" class="secondary" type="button">Use latest import</button></div>
+          <p class="fine-print">The Chrome side panel can bring in YouTube’s transcript automatically for more accurate notes.</p>
+          <details id="transcriptOptions" class="more-options"><summary>Add a transcript <span>recommended</span></summary>
+            <p class="hint">The transcript keeps wording and timestamps grounded in the video. The Chrome side panel can open and import YouTube’s transcript; on the website, use a recent import, paste captions, or upload a file.</p>
+            <div class="import-row"><button id="importMain" class="secondary" type="button">Import from YouTube</button><button id="loadMain" class="secondary" type="button">Use latest import</button></div>
             <div class="field-row"><label for="transcript">Transcript</label><label class="upload" for="fileInput">Upload file</label></div>
             <input id="fileInput" type="file" accept=".docx,.srt,.vtt,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
             <textarea id="transcript" name="transcript" rows="8" placeholder="[00:00] What the speaker says…"></textarea>
@@ -53,7 +58,7 @@
           <p id="mainIdea" class="main-idea"></p>
           <h3 class="section-title">In brief</h3><ul id="takeaways" class="takeaways"></ul>
           <h3 class="section-title">The video, in order</h3><div id="claims" class="moments"></div>
-          <h3 class="section-title">Sources mentioned</h3><div id="sourceAudit"></div>
+          <h3 class="section-title">Sources and checks</h3><p class="section-note">Some links are outside references. A matched caption confirms the quoted words, but does not by itself mean the speaker cited that page.</p><div id="sourceAudit"></div>
           <div id="comparisonSection" hidden><h3 class="section-title">Second video check</h3><div id="comparisonChecks"></div></div>
           <details class="research-limits"><summary>What still needs checking</summary><p id="limits"></p></details>
         </div>
