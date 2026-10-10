@@ -3,6 +3,7 @@ const apiBase = extension ? 'http://127.0.0.1:4317' : '';
 const $ = id => document.getElementById(id);
 const sampleUrl = 'https://www.youtube.com/watch?v=qSuCPooR3E4&t=288s';
 let currentResult = null;
+let hosted = false;
 if (!extension) { $('importMain').hidden = true; $('importComparison').hidden = true; }
 function videoIdFromUrl(value) {
   try {
@@ -43,7 +44,17 @@ async function checkServer() {
     const response = await fetch(`${apiBase}/api/status`);
     if (!response.ok) throw new Error();
     const data = await response.json();
-    setStatus(!data.ready ? 'Open Settings to connect OpenAI.' : data.geminiReady ? 'Ready for a video.' : 'OpenAI connected. Add a transcript, or connect Gemini for link-only notes.');
+    hosted = Boolean(data.hosted);
+    if (hosted) {
+      $('loadMain').hidden = true; $('loadComparison').hidden = true;
+      $('localTranscriptCopy').textContent = 'For exact wording and timestamps, paste captions or upload a transcript. Without one, Gemini can make approximate video notes.';
+      $('transcriptHint').textContent = 'A timestamped transcript keeps quotes and timing grounded in the video. Paste captions or upload a DOCX, SRT, VTT, or TXT file.';
+      $('settingsTitle').textContent = 'Your API keys';
+      $('settingsIntro').textContent = 'This public site uses keys from this browser tab for your requests. They are not saved on the server. OpenAI makes and checks the notes; Gemini reads a video when you have no transcript.';
+      $('settingsKicker').textContent = 'PRIVATE TO THIS TAB';
+      $('saveOpenai').textContent = 'Use OpenAI key'; $('saveGemini').textContent = 'Use Gemini key';
+      setStatus(sessionStorage.getItem('videoNotesOpenAI') ? 'Ready for a video.' : 'To make notes, add your OpenAI key in Settings.');
+    } else setStatus(!data.ready ? 'Open Settings to connect OpenAI.' : data.geminiReady ? 'Ready for a video.' : 'OpenAI connected. Add a transcript, or connect Gemini for link-only notes.');
   } catch { setStatus('Start the local server with npm start.', true); }
 }
 const settingsDialog = $('settingsDialog');
@@ -56,6 +67,11 @@ async function saveKey(provider) {
   const status = $(provider === 'openai' ? 'openaiKeyStatus' : 'geminiKeyStatus');
   const button = $(provider === 'openai' ? 'saveOpenai' : 'saveGemini');
   if (!input.value.trim()) { status.textContent = 'Paste a key first.'; status.classList.add('error'); return; }
+  if (hosted) {
+    sessionStorage.setItem(provider === 'openai' ? 'videoNotesOpenAI' : 'videoNotesGemini', input.value.trim());
+    input.value = ''; status.textContent = 'Ready in this browser tab.'; status.classList.remove('error');
+    await checkServer(); return;
+  }
   button.disabled = true; status.textContent = 'Saving…'; status.classList.remove('error');
   try {
     const response = await fetch(`${apiBase}/api/settings`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider, key: input.value.trim() }) });
@@ -217,7 +233,15 @@ $('analysisForm').addEventListener('submit', async event => {
       const id = videoIdFromUrl($('videoUrl').value);
       if (id) await importFromYouTube('main', { silent: true, expectedVideoId: id });
     }
-    const response = await fetch(`${apiBase}/api/analyze`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ videoUrl: $('videoUrl').value, transcript: $('transcript').value, comparisonVideoUrl: $('comparisonVideoUrl').value, comparisonTranscript: $('comparisonTranscript').value, priority: $('priority').value }) });
+    const headers = { 'content-type': 'application/json' };
+    if (hosted) {
+      const openai = sessionStorage.getItem('videoNotesOpenAI');
+      if (!openai) throw new Error('Add your OpenAI key in Settings first.');
+      headers['x-openai-key'] = openai;
+      const gemini = sessionStorage.getItem('videoNotesGemini');
+      if (gemini) headers['x-gemini-key'] = gemini;
+    }
+    const response = await fetch(`${apiBase}/api/analyze`, { method: 'POST', headers, body: JSON.stringify({ videoUrl: $('videoUrl').value, transcript: $('transcript').value, comparisonVideoUrl: $('comparisonVideoUrl').value, comparisonTranscript: $('comparisonTranscript').value, priority: $('priority').value }) });
     const data = await response.json(); if (!response.ok) { const error = new Error(data.error || `Request failed (${response.status})`); error.code = data.code; throw error; }
     render(data); setStatus('Notes are ready. Open any timestamp or source to check it.');
   } catch (error) { if (error.code === 'TRANSCRIPT_NEEDED') showTranscriptHelp(); setStatus(error.message || 'Could not make notes.', true); }

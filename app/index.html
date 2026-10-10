@@ -27,9 +27,9 @@
           <button id="sampleButton" class="text-button" type="button">Use an example</button>
           <div id="videoPreview" class="video-preview" hidden><iframe id="videoFrame" title="YouTube video preview" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
           <button id="analyzeButton" class="primary" type="submit">Make notes <span aria-hidden="true">→</span></button>
-          <p class="fine-print">The Chrome side panel can bring in YouTube’s transcript automatically for more accurate notes.</p>
+          <p id="localTranscriptCopy" class="fine-print">The Chrome side panel can bring in YouTube’s transcript automatically for more accurate notes.</p>
           <details id="transcriptOptions" class="more-options"><summary>Add a transcript <span>recommended</span></summary>
-            <p class="hint">The transcript keeps wording and timestamps grounded in the video. The Chrome side panel can open and import YouTube’s transcript; on the website, use a recent import, paste captions, or upload a file.</p>
+            <p id="transcriptHint" class="hint">The transcript keeps wording and timestamps grounded in the video. The Chrome side panel can open and import YouTube’s transcript; on the website, use a recent import, paste captions, or upload a file.</p>
             <div class="import-row"><button id="importMain" class="secondary" type="button">Import from YouTube</button><button id="loadMain" class="secondary" type="button">Use latest import</button></div>
             <div class="field-row"><label for="transcript">Transcript</label><label class="upload" for="fileInput">Upload file</label></div>
             <input id="fileInput" type="file" accept=".docx,.srt,.vtt,.txt,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
@@ -67,8 +67,8 @@
   </main>
   <dialog id="settingsDialog" class="settings-dialog" aria-labelledby="settingsTitle">
     <form id="settingsForm">
-      <div class="dialog-head"><div><p class="kicker">LOCAL SETTINGS</p><h2 id="settingsTitle">Connect your API keys</h2></div><button id="closeSettings" class="close-button" type="button" aria-label="Close settings">×</button></div>
-      <p class="dialog-intro">Keys are saved on this computer. OpenAI makes the notes and checks sources. Gemini can read a public video when you don't add a transcript.</p>
+      <div class="dialog-head"><div><p id="settingsKicker" class="kicker">LOCAL SETTINGS</p><h2 id="settingsTitle">Connect your API keys</h2></div><button id="closeSettings" class="close-button" type="button" aria-label="Close settings">×</button></div>
+      <p id="settingsIntro" class="dialog-intro">Keys are saved on this computer. OpenAI makes the notes and checks sources. Gemini can read a public video when you don't add a transcript.</p>
       <label for="openaiKey">OpenAI API key</label><input id="openaiKey" type="password" autocomplete="off" spellcheck="false" placeholder="Paste your key">
       <button id="saveOpenai" class="secondary save-key" type="button">Save OpenAI key</button><span id="openaiKeyStatus" class="key-status"></span>
       <p class="hint"><a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">Get an OpenAI API key</a></p>

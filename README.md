@@ -27,4 +27,8 @@ The local server listens on `127.0.0.1:4317`. Video links go to Gemini when usin
 
 ## Sharing and hosting
 
-The [GitHub repository](https://github.com/saving-the-reformation/video-notes) shares the code. It is not itself a live website. Each local user needs Node.js and their own API keys. Never commit `.env` or put API keys in a static site or extension package. A public hosted version needs accounts, usage limits, and server-side key protection before accepting arbitrary visitors; otherwise visitors could spend the owner's API balance. DigitalOcean App Platform can host a later server version once those controls are in place.
+The [GitHub repository](https://github.com/saving-the-reformation/video-notes) shares the code. It is not itself a live website. The public website can run on DigitalOcean App Platform as a Node web service. Set `HOSTED=1`, use `npm start`, and let App Platform assign `PORT`. The server listens on `0.0.0.0` in hosted mode. DigitalOcean gives the app an HTTPS `ondigitalocean.app` address; a custom domain can be added later.
+
+On the hosted website, each visitor supplies their own OpenAI key and, for link-only notes, their own Gemini key. Keys remain in that browser tab's session storage and are sent over HTTPS to the server for the request. They are not saved to `.env` or written to server storage. Shared transcript import and the server-side key-saving endpoint are disabled in hosted mode. Browser tabs should be closed after using keys on a shared computer. The public service limits concurrent analyses to two and each client address to six analyses per hour. This limit protects availability; visitors still control the usage costs of their own provider keys. Never commit `.env` or put owner keys in a static site or extension package.
+
+For the exact deployment steps, see [DEPLOY.md](DEPLOY.md).
